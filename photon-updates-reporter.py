@@ -9,7 +9,7 @@ def get_cve_fixes(date = None):
     data = {}
     for fix in cve_fix_list:
         if fix["status"] == "Closed":
-            if fix["cve_score"] > 7.0:
+            if fix["cve_score"] >= 7.5:
                 fix_json = {}
                 fix_list = []
                 cve_data = {}
@@ -41,14 +41,13 @@ def get_refined_cve(cve_fix_list, source_rpms):
         if pkg in cve_fix_list:
             src_version = version.parse(details["version"] + "-" + details[
                 "release"])
-            fix_version = ""
             for fix_version, cve_detail in cve_fix_list[pkg].items():
                 fix_data = []
                 cve_fix_version = version.parse(fix_version)
                 if cve_fix_version > src_version:
-                    fix_data = cve_fix_list[pkg][fix_version]
-            if fix_version and fix_data:
-                fix_version_data[fix_version] = fix_data
+                    fix_data.append(cve_fix_list[pkg][fix_version])
+                if fix_version and fix_data:
+                    fix_version_data[fix_version] = fix_data
             if fix_version_data:
                 data[pkg] = fix_version_data
     return data
@@ -56,17 +55,21 @@ def get_refined_cve(cve_fix_list, source_rpms):
 
 refined_cves = get_refined_cve(get_cve_fixes(), source_rpms)
 
-target_rpms = get_rpm_manifest("18142938")
+target_rpms = get_rpm_manifest("18434316")
 
 
 def get_fixed_cves(target_rpms, refined_cves):
     data = {}
     for pkg, details in refined_cves.items():
+        version_fix = {}
         rpm_version = version.parse(target_rpms[pkg]["version"] + "-" + target_rpms[pkg]["release"])
         for fix_version, cve_detail in details.items():
             cve_fix_version = version.parse(fix_version)
             if cve_fix_version == rpm_version or cve_fix_version < rpm_version:
-                data[pkg] = details
+                version_fix[fix_version] = cve_detail
+        if version_fix:
+            data[pkg] = version_fix
+
     return data
 
 print(get_fixed_cves(target_rpms, refined_cves))
