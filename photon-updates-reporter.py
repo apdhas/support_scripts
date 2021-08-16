@@ -18,6 +18,8 @@ def get_cve_fixes(date = None):
                     fix_json = data[pkg_name]
                 cve_data["cve_num"] = fix["cve_num"]
                 cve_data["score"] = fix["cve_score"]
+                cve_data["bug_id"] = fix["bug_id"]
+                cve_data["fix_version"] = fix["res_ver"]
                 if fix_json and fix["res_ver"] in fix_json:
                     fix_list = fix_json[fix["res_ver"]]
                 fix_list.append(cve_data)
@@ -32,7 +34,7 @@ def get_rpm_manifest(buildNumber):
     rpm_list = json.loads(response.text)
     return rpm_list["files"]
 
-source_rpms = get_rpm_manifest("17694817")
+source_rpms = get_rpm_manifest("18370788")
 
 def get_refined_cve(cve_fix_list, source_rpms):
     data = {}
@@ -55,20 +57,21 @@ def get_refined_cve(cve_fix_list, source_rpms):
 
 refined_cves = get_refined_cve(get_cve_fixes(), source_rpms)
 
-target_rpms = get_rpm_manifest("18434316")
+target_rpms = get_rpm_manifest("18390025")
 
 
 def get_fixed_cves(target_rpms, refined_cves):
     data = {}
     for pkg, details in refined_cves.items():
-        version_fix = {}
+        version_fix = []
         rpm_version = version.parse(target_rpms[pkg]["version"] + "-" + target_rpms[pkg]["release"])
         for fix_version, cve_detail in details.items():
+            cve_detail = cve_detail[0]
             cve_fix_version = version.parse(fix_version)
             if cve_fix_version == rpm_version or cve_fix_version < rpm_version:
-                version_fix[fix_version] = cve_detail
+                version_fix.extend(cve_detail)
         if version_fix:
-            data[pkg] = version_fix
+            data[pkg+'-'+str(rpm_version)] = version_fix
 
     return data
 
